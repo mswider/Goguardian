@@ -1,0 +1,14 @@
+{
+  "name": "goguardian",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "node src/index.js"
+  },
+  "author": "mswider",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.17.1"
+  }
+}
