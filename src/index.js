@@ -1,8 +1,8 @@
 const express = require('express');
 const app = express();
 
-app.get('/', function (req, res) {
-  res.send('Hello from Express!');
+app.get('/ip', function (req, res) {
+  res.send('8.8.8.8');
 });
 
 var port = 3000;
