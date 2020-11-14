@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Control Panel</title>
+    <script src="https://unpkg.com/react@latest/umd/react.development.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/react-dom@latest/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@material-ui/core@latest/umd/material-ui.development.js" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/babel-standalone@latest/babel.min.js" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,400,500,700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons" />
+
+    <script type="text/babel">
+      const {
+        Button,
+        AppBar,
+        Toolbar,
+        IconButton,
+        Icon,
+        Typography,
+        Drawer,
+        makeStyles,
+        List,
+        ListItem,
+        ListItemText,
+        ListItemIcon,
+        Container,
+        FormGroup,
+        FormControlLabel,
+        Switch,
+        TextField,
+        Divider,
+        Snackbar
+      } = MaterialUI;
+
+      function post(url, data) {
+        return fetch(url, {method: "POST", body: JSON.stringify(data)});
+      }
+
+      const useStyles = makeStyles((theme) => ({
+        list: {
+          width: 250,
+        },
+        textCentered: {
+          textAlign: 'center',
+        },
+        horizontalCenter: {
+          display: 'table',
+          margin: 'auto',
+          marginTop: '20px'
+        },
+        margin: {
+          margin: theme.spacing(1),
+        },
+        marginCenter: {
+          margin: 'auto',
+        },
+        ipMargin: {
+          marginTop: '100px',
+        },
+      }));
+
+      function App() {
+        const [state, setState] = React.useState({
+          drawerOpen: false
+        });
+
+        const classes = useStyles();
+
+        return (
+          <div>
+            <AppBar position="static">
+              <Toolbar>
+                <IconButton color="inherit" edge="start" onClick={() =>setState({drawerOpen: true})}>
+                  <Icon>dehaze</Icon>
+                </IconButton>
+                <Typography variant="h5">
+                  Goguardian Control Panel
+                </Typography>
+              </Toolbar>
+            </AppBar>
+            <div>
+              <IpConfig />
+            </div>
+            <Drawer anchor="left" open={state.drawerOpen} onClose={() =>setState({drawerOpen: false})}>
+              <div className={classes.list}>
+                <List>
+                  <ListItem button>
+                    <ListItemIcon>
+                      <Icon color="inherit">my_location</Icon>
+                    </ListItemIcon>
+                    <ListItemText primary="IP Address" />
+                  </ListItem>
+                </List>
+              </div>
+            </Drawer>
+          </div>
+        );
+      }
+
+      function IpConfig() {
+        async function getSettings(){
+          return await fetch('/web/api/ip').then(res => res.text()).then(data => JSON.parse(data));
+        }
+
+        const [state, setState] = React.useState({
+          spoofEnabled: false,
+          customIP: '',
+          ipAddress: '',
+          snackbarOpen: false,
+          snackbarText: '',
+          snackbarDuration: 3000
+        });
+
+        React.useEffect(() => {
+          (async () => {
+            var settings = await getSettings();
+            if(settings.spoofEnabled){
+              setState({ ...state, spoofEnabled: true, customIP: settings.customIP, ipAddress: settings.customIP });
+            } else {
+              setState({ ...state, spoofEnabled: false, customIP: '', ipAddress: settings.realIP });
+            }
+          })();
+        }, []);
+
+        const classes = useStyles();
+
+        const closeSnackbar = (event, reason) => {
+          if (reason === 'clickaway') {
+            return;
+          }
+          setState({ ...state, snackbarOpen: false});
+        };
+
+        function updateIP() {
+          if(state.spoofEnabled){
+            if (/^(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/.test(state.customIP)){
+              post('/web/api/set_ip', { spoofEnabled: state.spoofEnabled, customIP: state.customIP });
+              setState({ ...state, snackbarText: 'IP address changed', snackbarOpen: true});
+            } else {
+              setState({ ...state, snackbarText: 'Error: IP address invalid', snackbarOpen: true});
+            }
+          } else {
+            post('/web/api/set_ip', { spoofEnabled: state.spoofEnabled, customIP: state.customIP });
+            setState({ ...state, snackbarText: 'IP address changed', snackbarOpen: true});
+          }
+          setTimeout(function (){
+            (async () => {
+              var settings = await getSettings();
+              if(settings.spoofEnabled){
+                setState({ ...state, spoofEnabled: true, customIP: settings.customIP, ipAddress: settings.customIP });
+              } else {
+                setState({ ...state, spoofEnabled: false, customIP: '', ipAddress: settings.realIP });
+              }
+            })();
+          }, state.snackbarDuration);
+
+        }
+
+        return (
+          <div>
+            <Container maxWidth="sm">
+              <Typography variant="h2" className={classes.textCentered}>
+                IP Address Control
+              </Typography>
+              <Divider />
+              <form className={classes.horizontalCenter}>
+                <FormGroup row className={classes.margin}>
+                  <FormControlLabel
+                    control={<Switch checked={state.spoofEnabled} onChange={(event) => setState({ ...state, spoofEnabled: event.target.checked})} color="primary" />}
+                    label="Spoof IP Address" className={classes.marginCenter}
+                  />
+                </FormGroup>
+                <FormGroup row className={classes.margin}>
+                  <TextField disabled={!state.spoofEnabled} value={state.customIP} label="IP Address" variant="outlined" className={classes.marginCenter} onChange={(event) => setState({ ...state, customIP: event.target.value})} />
+                </FormGroup>
+                <FormGroup row className={classes.margin}>
+                  <Button variant="contained" color="primary" className={classes.marginCenter} onClick={() => updateIP()}>
+                    Apply
+                  </Button>
+                </FormGroup>
+              </form>
+              <div className={classes.ipMargin}>
+                <Typography variant="h5" className={classes.textCentered}>
+                  Goguardian currently sees your IP address as <b>{state.ipAddress}</b>
+                </Typography>
+              </div>
+            </Container>
+            <Snackbar anchorOrigin={{vertical: 'bottom', horizontal: 'left'}} open={state.snackbarOpen} autoHideDuration={state.snackbarDuration} onClose={closeSnackbar} message={state.snackbarText} />
+          </div>
+        );
+      }
+
+      ReactDOM.render(<App />, document.querySelector('#app'));
+    </script>
+  </head>
+  <body style="margin: 0 auto;">
+    <div id='app'></div>
+  </body>
+</html>
